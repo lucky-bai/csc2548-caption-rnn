@@ -1,6 +1,10 @@
 import torch
+import torchvision
 import torch.nn as nn
+from torch.autograd import Variable
 import pdb
+from PIL import Image
+import json
 
 
 VGG_MODEL_FILE = 'vgg16-397923af.pth'
@@ -64,16 +68,34 @@ def make_layers(cfg, batch_norm=False):
 
 def load_vgg16(**kwargs):
   kwargs['init_weights'] = False
-  model = VGG(MODEL_CFG, **kwargs)
+  model = VGG(make_layers(MODEL_CFG), **kwargs)
   model.load_state_dict(torch.load(VGG_MODEL_FILE), strict = False)
   return model
 
 
+# Image of a bed
+TEST_IMAGE = '../train2014/COCO_train2014_000000436508.jpg'
 
 
 def main():
-  model = load_vgg16()
-  print(model)
+  model = load_vgg16().cuda()
+  img = Image.open(TEST_IMAGE)
+  transforms = torchvision.transforms.Compose([
+    torchvision.transforms.Resize((224, 224)),
+    torchvision.transforms.ToTensor(),
+  ])
+  img = transforms(img).unsqueeze(0)
+  img = Variable(img).cuda()
+  out = model(img)
+  _, result = torch.topk(out, k = 5)
+  result = result[0].data.tolist()
+
+  with open('imagenet_to_human.json') as jsonf:
+    imagenet_to_human = json.load(jsonf)
+
+  for r in result:
+    r = str(r)
+    print(r, imagenet_to_human[r])
 
 
 main()
