@@ -14,7 +14,7 @@ VGG_IMG_DIM = 224
 
 class VGG(nn.Module):
 
-  def __init__(self, features, num_classes=1000, init_weights=True):
+  def __init__(self, features, num_classes=1000):
     super(VGG, self).__init__()
     self.features = features
     self.classifier = nn.Sequential(
@@ -26,28 +26,12 @@ class VGG(nn.Module):
       nn.Dropout(),
       nn.Linear(4096, num_classes),
     )
-    if init_weights:
-      self._initialize_weights()
 
   def forward(self, x):
     x = self.features(x)
     x = x.view(x.size(0), -1)
     x = self.classifier(x)
     return x
-
-  def _initialize_weights(self):
-    for m in self.modules():
-      if isinstance(m, nn.Conv2d):
-        n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-        m.weight.data.normal_(0, math.sqrt(2. / n))
-        if m.bias is not None:
-          m.bias.data.zero_()
-      elif isinstance(m, nn.BatchNorm2d):
-        m.weight.data.fill_(1)
-        m.bias.data.zero_()
-      elif isinstance(m, nn.Linear):
-        m.weight.data.normal_(0, 0.01)
-        m.bias.data.zero_()
 
 
 def make_layers(cfg, batch_norm=False):
@@ -67,11 +51,19 @@ def make_layers(cfg, batch_norm=False):
 
 
 
-def load_vgg16(**kwargs):
-  kwargs['init_weights'] = False
-  model = VGG(make_layers(MODEL_CFG), **kwargs)
-  model.load_state_dict(torch.load(VGG_MODEL_FILE), strict = False)
-  return model
+class CaptionNet(nn.Module):
+
+  def __init__(self):
+    super(CaptionNet, self).__init__()
+
+    # Make VGG net
+    self.vgg = VGG(make_layers(MODEL_CFG))
+    self.vgg.load_state_dict(torch.load(VGG_MODEL_FILE))
+
+  def forward(self, x):
+    return self.vgg(x)
+
+
 
 
 def resize_and_pad(img):
@@ -87,7 +79,8 @@ TEST_IMAGE = '../train2014/COCO_train2014_000000436508.jpg'
 
 
 def main():
-  model = load_vgg16().cuda()
+  model = CaptionNet().cuda()
+
   img = Image.open(TEST_IMAGE)
   transforms = torchvision.transforms.Compose([
     torchvision.transforms.Lambda(resize_and_pad),
