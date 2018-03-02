@@ -9,6 +9,7 @@ import json
 
 VGG_MODEL_FILE = 'vgg16-397923af.pth'
 MODEL_CFG = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
+VGG_IMG_DIM = 224
 
 
 class VGG(nn.Module):
@@ -73,6 +74,14 @@ def load_vgg16(**kwargs):
   return model
 
 
+def resize_and_pad(img):
+  img.thumbnail((224, 224))
+  w, h = img.size
+  new_img = Image.new('RGB', (224, 224), 'black')
+  new_img.paste(img, ((224 - w)//2, (224 - h)//2))
+  return new_img
+
+
 # Image of a bed
 TEST_IMAGE = '../train2014/COCO_train2014_000000436508.jpg'
 
@@ -81,7 +90,7 @@ def main():
   model = load_vgg16().cuda()
   img = Image.open(TEST_IMAGE)
   transforms = torchvision.transforms.Compose([
-    torchvision.transforms.Resize((224, 224)),
+    torchvision.transforms.Lambda(resize_and_pad),
     torchvision.transforms.ToTensor(),
   ])
   img = transforms(img).unsqueeze(0)
