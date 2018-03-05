@@ -60,9 +60,10 @@ def main():
   ])
   img = transforms(img).unsqueeze(0)
   img = Variable(img).cuda()
-  out = model(img)
+  #out = model(img)
+  perp = model.forward_perplexity(img, ['the', 'man', 'is', 'biting', 'the', 'dog'])
 
-  print(out)
+  print(perp)
 
 
 

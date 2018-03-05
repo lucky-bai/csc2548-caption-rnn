@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.autograd import Variable
 import word_embedding
 import pdb
@@ -123,5 +124,15 @@ class CaptionNet(nn.Module):
 
   def forward_perplexity(self, img, words):
     """Given image and ground-truth caption, compute negative log likelihood perplexity"""
-    # Todo
-    return 0
+    hidden = self.vgg.forward_until_hidden_layer(img)
+
+    sum_nll = 0
+    for word in words:
+      next_input = Variable(self.word_embeddings.get_word_embedding(word)).cuda()
+      hidden = self.rnn_cell(next_input, hidden)
+      word_class = self.hidden_to_vocab(hidden)
+      word_ix = Variable(torch.LongTensor([self.word_embeddings.get_index_from_word(word)])).cuda()
+      nll = float(F.cross_entropy(word_class, word_ix))
+      sum_nll += nll
+
+    return sum_nll

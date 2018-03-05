@@ -9,12 +9,21 @@ class WordEmbedding:
     with open('coco_words.txt') as f:
       self.vocab_words = f.read().split()
 
+    # Special tokens
+    self.vocab_words.append('OUT_OF_VOCAB')
+
   def get_word_embedding(self, word):
     t = self.nlp(word)
     return torch.Tensor(t[0].vector)
 
   def get_word_from_index(self, ix):
     return self.vocab_words[ix]
+
+  def get_index_from_word(self, word):
+    if word in self.vocab_words:
+      return self.vocab_words.index(word)
+    else:
+      return self.vocab_words.index('OUT_OF_VOCAB')
 
 
 
