@@ -91,6 +91,8 @@ class CaptionNet(nn.Module):
     # Linear layer to convert hidden layer to word in vocab
     self.hidden_to_vocab = nn.Linear(RNN_HIDDEN_SIZE, VOCABULARY_SIZE)
 
+    self.word_embeddings = word_embedding.WordEmbedding()
+
 
   def forward(self, img):
     """Forward pass through network
@@ -110,11 +112,11 @@ class CaptionNet(nn.Module):
       _, word_ix = torch.max(word_class, 1)
       word_ix = int(word_ix)
 
-      cur_word = word_embedding.get_word_from_index(word_ix)
+      cur_word = self.word_embeddings.get_word_from_index(word_ix)
       words.append(cur_word)
 
       # Update input to next layer
-      next_input = Variable(word_embedding.get_word_embedding(cur_word)).cuda()
+      next_input = Variable(self.word_embeddings.get_word_embedding(cur_word)).cuda()
 
     return words
 
