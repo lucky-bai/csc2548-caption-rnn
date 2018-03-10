@@ -20,7 +20,7 @@ RNN_HIDDEN_SIZE = 4096
 WORDVEC_SIZE = 300
 
 # Assume a limited language model consisting of this many words
-VOCABULARY_SIZE = 6000
+VOCABULARY_SIZE = 10000
 
 
 class VGG(nn.Module):
@@ -132,7 +132,7 @@ class CaptionNet(nn.Module):
       hidden = self.rnn_cell(next_input, hidden)
       word_class = self.hidden_to_vocab(hidden)
       word_ix = Variable(torch.LongTensor([self.word_embeddings.get_index_from_word(word)])).cuda()
-      nll = float(F.cross_entropy(word_class, word_ix))
+      nll = F.cross_entropy(word_class, word_ix)
       sum_nll += nll
 
     return sum_nll

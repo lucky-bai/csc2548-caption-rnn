@@ -1,13 +1,22 @@
 import torch
 import torchvision
 from torch.autograd import Variable
+import torch.optim
 import pdb
 from PIL import Image
 import json
 import caption_net
 import numpy as np
+import os
+import random
 
 RNG_SEED = 236346
+
+EPOCHS = 1
+BATCH_SIZE = 10
+
+IMAGE_DIR = '../train2014'
+CAPTION_JSON = '../annotations/captions_train2014.json'
 
 
 
@@ -46,25 +55,64 @@ def test_vgg_on_image():
     print(r, imagenet_to_human[r])
 
 
+def training_loop():
+
+  # Load JSON
+  with open(CAPTION_JSON) as jsonf:
+    data = json.load(jsonf)
+    captions = data['annotations']
+
+  # Shuffle captions
+  random.shuffle(captions)
+  captions_batches = [captions[i:i+BATCH_SIZE] for i in range(0, len(captions), BATCH_SIZE)]
+  num_batches = len(captions_batches)
+
+  # Initialize model
+  model = caption_net.CaptionNet().cuda()
+  torch.save(model.state_dict(), 'caption_net.t7')
+  optimizer = torch.optim.Adam(model.parameters())
+
+  for epoch in range(EPOCHS):
+    for batch_ix, captions_batch in enumerate(captions_batches):
+      batch_loss = 0
+      optimizer.zero_grad()
+
+      for caption in captions_batch:
+        image_id = caption['image_id']
+        image_file = '%s/COCO_train2014_%012d.jpg' % (IMAGE_DIR, image_id)
+        text = caption['caption']
+        words = text.split()
+
+        # Load image
+        img = Image.open(image_file)
+        transforms = torchvision.transforms.Compose([
+          torchvision.transforms.Lambda(resize_and_pad),
+          torchvision.transforms.ToTensor(),
+        ])
+        img = transforms(img).unsqueeze(0)
+        img = Variable(img).cuda()
+
+        # Compute loss
+        loss = model.forward_perplexity(img, words)
+        batch_loss += loss
+
+      # Update parameters
+      batch_loss.backward()
+      optimizer.step()
+      print('Epoch %d, batch %d/%d, loss %0.9f' % (epoch, batch_ix, num_batches, batch_loss))
+      batch_loss = 0
+
+    # Save at end of each epoch
+    torch.save(model.state_dict(), 'caption_net.t7')
+
+
+
 def main():
   np.random.seed(RNG_SEED)
   torch.manual_seed(RNG_SEED)
+  random.seed(RNG_SEED)
 
-  #test_vgg_on_image()
-  model = caption_net.CaptionNet().cuda()
-
-  img = Image.open(TEST_IMAGE)
-  transforms = torchvision.transforms.Compose([
-    torchvision.transforms.Lambda(resize_and_pad),
-    torchvision.transforms.ToTensor(),
-  ])
-  img = transforms(img).unsqueeze(0)
-  img = Variable(img).cuda()
-  #out = model(img)
-  perp = model.forward_perplexity(img, ['the', 'man', 'is', 'biting', 'the', 'dog'])
-
-  print(perp)
-
+  training_loop()
 
 
 main()
