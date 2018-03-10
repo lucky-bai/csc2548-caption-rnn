@@ -81,6 +81,10 @@ class CaptionNet(nn.Module):
     # Make VGG net
     self.vgg = VGG(make_layers(VGG_MODEL_CFG))
     self.vgg.load_state_dict(torch.load(VGG_MODEL_FILE))
+    
+    # Freeze all VGG layers
+    for param in self.vgg.parameters():
+      param.requires_grad = False
 
     # Recurrent layer
     self.rnn_cell = nn.RNNCell(

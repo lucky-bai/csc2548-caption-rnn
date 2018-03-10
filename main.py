@@ -13,7 +13,8 @@ import random
 RNG_SEED = 236346
 
 EPOCHS = 1
-BATCH_SIZE = 10
+BATCH_SIZE = 35
+SAVE_MODEL_EVERY = 200
 
 IMAGE_DIR = '../train2014'
 CAPTION_JSON = '../annotations/captions_train2014.json'
@@ -69,8 +70,8 @@ def training_loop():
 
   # Initialize model
   model = caption_net.CaptionNet().cuda()
-  torch.save(model.state_dict(), 'caption_net.t7')
-  optimizer = torch.optim.Adam(model.parameters())
+  model.train()
+  optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
 
   for epoch in range(EPOCHS):
     for batch_ix, captions_batch in enumerate(captions_batches):
@@ -102,8 +103,32 @@ def training_loop():
       print('Epoch %d, batch %d/%d, loss %0.9f' % (epoch, batch_ix, num_batches, batch_loss))
       batch_loss = 0
 
+      if (batch_ix+1) % SAVE_MODEL_EVERY == 0:
+        print('Saving...')
+        torch.save(model.state_dict(), 'caption_net.t7')
+
     # Save at end of each epoch
+    print('Saving...')
     torch.save(model.state_dict(), 'caption_net.t7')
+
+
+
+def inference_mode():
+  """Generate a caption for a new image"""
+  model = caption_net.CaptionNet().cuda()
+  model.load_state_dict(torch.load('caption_net.t7'))
+  model.eval()
+
+  img = Image.open(TEST_IMAGE)
+  transforms = torchvision.transforms.Compose([
+    torchvision.transforms.Lambda(resize_and_pad),
+    torchvision.transforms.ToTensor(),
+  ])
+  img = transforms(img).unsqueeze(0)
+  img = Variable(img).cuda()
+  out = model(img)
+
+  print(out)
 
 
 
@@ -113,6 +138,7 @@ def main():
   random.seed(RNG_SEED)
 
   training_loop()
+  #inference_mode()
 
 
 main()

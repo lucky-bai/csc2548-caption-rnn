@@ -1,3 +1,4 @@
 *.pth
 *.pyc
+*.t7
 coco_words.txt
