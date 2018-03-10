@@ -12,8 +12,8 @@ import random
 
 RNG_SEED = 236346
 
-EPOCHS = 1
-BATCH_SIZE = 35
+EPOCHS = 10
+BATCH_SIZE = 20
 SAVE_MODEL_EVERY = 200
 
 IMAGE_DIR = '../train2014'
@@ -82,7 +82,6 @@ def training_loop():
         image_id = caption['image_id']
         image_file = '%s/COCO_train2014_%012d.jpg' % (IMAGE_DIR, image_id)
         text = caption['caption']
-        words = text.split()
 
         # Load image
         img = Image.open(image_file)
@@ -94,7 +93,7 @@ def training_loop():
         img = Variable(img).cuda()
 
         # Compute loss
-        loss = model.forward_perplexity(img, words)
+        loss = model.forward_perplexity(img, text)
         batch_loss += loss
 
       # Update parameters
@@ -137,6 +136,7 @@ def main():
   torch.manual_seed(RNG_SEED)
   random.seed(RNG_SEED)
 
+  #test_vgg_on_image()
   training_loop()
   #inference_mode()
 

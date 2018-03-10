@@ -17,10 +17,12 @@ VGG_IMG_DIM = 224
 RNN_HIDDEN_SIZE = 4096
 
 # Dimension of word embeddings
-WORDVEC_SIZE = 300
+# Add one to handle END_MARKER
+WORDVEC_SIZE = 300 + 1
 
-# Assume a limited language model consisting of this many words
-VOCABULARY_SIZE = 10000
+# Length of vocab_words handled by WordEmbedding
+# Todo: stop hardcoding this
+VOCABULARY_SIZE = 9870 + 1
 
 
 class VGG(nn.Module):
@@ -121,18 +123,19 @@ class CaptionNet(nn.Module):
       words.append(cur_word)
 
       # Update input to next layer
-      next_input = Variable(self.word_embeddings.get_word_embedding(cur_word)).cuda()
+      next_input = Variable(torch.Tensor(self.word_embeddings.get_word_embedding(cur_word))).cuda()
 
     return words
 
 
-  def forward_perplexity(self, img, words):
+  def forward_perplexity(self, img, text):
     """Given image and ground-truth caption, compute negative log likelihood perplexity"""
+    words, wordvecs = self.word_embeddings.sentence_to_embedding(text)
     hidden = self.vgg.forward_until_hidden_layer(img)
 
     sum_nll = 0
-    for word in words:
-      next_input = Variable(self.word_embeddings.get_word_embedding(word)).cuda()
+    for word, wordvec in zip(words, wordvecs):
+      next_input = Variable(torch.Tensor(wordvec)).cuda()
       hidden = self.rnn_cell(next_input, hidden)
       word_class = self.hidden_to_vocab(hidden)
       word_ix = Variable(torch.LongTensor([self.word_embeddings.get_index_from_word(word)])).cuda()
