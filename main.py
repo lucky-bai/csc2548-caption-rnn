@@ -10,7 +10,7 @@ import numpy as np
 import os
 import random
 
-RNG_SEED = 236346
+RNG_SEED = 236347
 
 EPOCHS = 10
 BATCH_SIZE = 20
@@ -30,7 +30,8 @@ def resize_and_pad(img):
 
 
 # Image of a bed
-TEST_IMAGE = '../train2014/COCO_train2014_000000436508.jpg'
+#TEST_IMAGE = '../train2014/COCO_train2014_000000436508.jpg'
+TEST_IMAGE = '../bai_with_cat.jpg'
 
 
 def test_vgg_on_image():
@@ -137,8 +138,8 @@ def main():
   random.seed(RNG_SEED)
 
   #test_vgg_on_image()
-  training_loop()
-  #inference_mode()
+  #training_loop()
+  inference_mode()
 
 
 main()

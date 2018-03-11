@@ -89,7 +89,7 @@ class CaptionNet(nn.Module):
       param.requires_grad = False
 
     # Recurrent layer
-    self.rnn_cell = nn.RNNCell(
+    self.lstm_cell = nn.RNNCell(
       input_size = WORDVEC_SIZE,
       hidden_size = RNN_HIDDEN_SIZE,
       nonlinearity = 'relu',
@@ -107,14 +107,16 @@ class CaptionNet(nn.Module):
     Output: sequence of words
     """
     hidden = self.vgg.forward_until_hidden_layer(img)
+    cell = Variable(torch.zeros(RNN_HIDDEN_SIZE)).cuda()
 
-    # First input is zero vector
+    # First word vector is zero
     next_input = Variable(torch.zeros(WORDVEC_SIZE)).cuda()
     
     # For now, let's just generate 10 words (should actually generate until end token)
     words = []
     for _ in range(10):
-      hidden = self.rnn_cell(next_input, hidden)
+      #hidden, cell = self.lstm_cell(next_input, (hidden, cell))
+      hidden = self.lstm_cell(next_input, hidden)
       word_class = self.hidden_to_vocab(hidden)
       _, word_ix = torch.max(word_class, 1)
       word_ix = int(word_ix)
@@ -132,13 +134,22 @@ class CaptionNet(nn.Module):
     """Given image and ground-truth caption, compute negative log likelihood perplexity"""
     words, wordvecs = self.word_embeddings.sentence_to_embedding(text)
     hidden = self.vgg.forward_until_hidden_layer(img)
+    cell = Variable(torch.zeros(RNN_HIDDEN_SIZE)).cuda()
+
+    # Train it to predict the next word given previous word vector
+    # Start with zero vector as first input
+    wordvecs_shift_one = [np.zeros(WORDVEC_SIZE)] + wordvecs[:-1]
 
     sum_nll = 0
-    for word, wordvec in zip(words, wordvecs):
+    for word, wordvec in zip(words, wordvecs_shift_one):
       next_input = Variable(torch.Tensor(wordvec)).cuda()
-      hidden = self.rnn_cell(next_input, hidden)
+      hidden = self.lstm_cell(next_input, hidden)
+      #hidden, cell = self.lstm_cell(next_input, (hidden, cell))
+
       word_class = self.hidden_to_vocab(hidden)
+      #word_class = self.hidden_to_vocab(hidden).unsqueeze(0)
       word_ix = Variable(torch.LongTensor([self.word_embeddings.get_index_from_word(word)])).cuda()
+
       nll = F.cross_entropy(word_class, word_ix)
       sum_nll += nll
 
