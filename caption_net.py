@@ -89,10 +89,9 @@ class CaptionNet(nn.Module):
       param.requires_grad = False
 
     # Recurrent layer
-    self.lstm_cell = nn.RNNCell(
+    self.lstm_cell = nn.LSTMCell(
       input_size = WORDVEC_SIZE,
       hidden_size = RNN_HIDDEN_SIZE,
-      nonlinearity = 'relu',
     )
 
     # Linear layer to convert hidden layer to word in vocab
@@ -106,23 +105,26 @@ class CaptionNet(nn.Module):
     Input: image tensor
     Output: sequence of words
     """
-    hidden = self.vgg.forward_until_hidden_layer(img)
+    hidden = self.vgg.forward_until_hidden_layer(img).squeeze()
     cell = Variable(torch.zeros(RNN_HIDDEN_SIZE)).cuda()
 
     # First word vector is zero
     next_input = Variable(torch.zeros(WORDVEC_SIZE)).cuda()
     
-    # For now, let's just generate 10 words (should actually generate until end token)
+    # Keep generating until end token
     words = []
-    for _ in range(10):
-      #hidden, cell = self.lstm_cell(next_input, (hidden, cell))
-      hidden = self.lstm_cell(next_input, hidden)
+    while True:
+      hidden, cell = self.lstm_cell(next_input, (hidden, cell))
       word_class = self.hidden_to_vocab(hidden)
-      _, word_ix = torch.max(word_class, 1)
+      _, word_ix = torch.max(word_class, 0)
       word_ix = int(word_ix)
 
       cur_word = self.word_embeddings.get_word_from_index(word_ix)
       words.append(cur_word)
+
+      # End marker generated, we're done
+      if cur_word == '.':
+        break
 
       # Update input to next layer
       next_input = Variable(torch.Tensor(self.word_embeddings.get_word_embedding(cur_word))).cuda()
@@ -133,7 +135,7 @@ class CaptionNet(nn.Module):
   def forward_perplexity(self, img, text):
     """Given image and ground-truth caption, compute negative log likelihood perplexity"""
     words, wordvecs = self.word_embeddings.sentence_to_embedding(text)
-    hidden = self.vgg.forward_until_hidden_layer(img)
+    hidden = self.vgg.forward_until_hidden_layer(img).squeeze()
     cell = Variable(torch.zeros(RNN_HIDDEN_SIZE)).cuda()
 
     # Train it to predict the next word given previous word vector
@@ -143,11 +145,9 @@ class CaptionNet(nn.Module):
     sum_nll = 0
     for word, wordvec in zip(words, wordvecs_shift_one):
       next_input = Variable(torch.Tensor(wordvec)).cuda()
-      hidden = self.lstm_cell(next_input, hidden)
-      #hidden, cell = self.lstm_cell(next_input, (hidden, cell))
+      hidden, cell = self.lstm_cell(next_input, (hidden, cell))
 
-      word_class = self.hidden_to_vocab(hidden)
-      #word_class = self.hidden_to_vocab(hidden).unsqueeze(0)
+      word_class = self.hidden_to_vocab(hidden).unsqueeze(0)
       word_ix = Variable(torch.LongTensor([self.word_embeddings.get_index_from_word(word)])).cuda()
 
       nll = F.cross_entropy(word_class, word_ix)
