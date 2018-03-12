@@ -156,7 +156,7 @@ class CaptionNet(nn.Module):
 
     sum_nll = 0
     for ix in range(SENTENCE_LENGTH):
-      next_input = Variable(wordvecs[:, ix, :]).cuda().float()
+      next_input = Variable(wordvecs_shift_one[:, ix, :]).cuda().float()
       hidden, cell = self.lstm_cell(next_input, (hidden, cell))
 
       word_class = self.hidden_to_vocab(hidden)
@@ -166,7 +166,7 @@ class CaptionNet(nn.Module):
         word_ix_list.append(self.word_embeddings.get_index_from_word(w))
       word_ix = Variable(torch.LongTensor(word_ix_list)).cuda()
 
-      nll = F.cross_entropy(word_class, word_ix, size_average = False)
+      nll = F.cross_entropy(word_class, word_ix)
       sum_nll += nll
 
     return sum_nll
