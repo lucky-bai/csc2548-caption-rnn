@@ -24,6 +24,9 @@ WORDVEC_SIZE = 300 + 1
 # Todo: stop hardcoding this
 VOCABULARY_SIZE = 9870 + 1
 
+# Pad with periods if too short
+SENTENCE_LENGTH = 20
+
 
 class VGG(nn.Module):
 
@@ -132,25 +135,38 @@ class CaptionNet(nn.Module):
     return words
 
 
-  def forward_perplexity(self, img, text):
+  def forward_perplexity(self, imgs, sentences, wordvecs):
     """Given image and ground-truth caption, compute negative log likelihood perplexity"""
-    words, wordvecs = self.word_embeddings.sentence_to_embedding(text)
-    hidden = self.vgg.forward_until_hidden_layer(img).squeeze()
-    cell = Variable(torch.zeros(RNN_HIDDEN_SIZE)).cuda()
+    batch_size = imgs.shape[0]
+
+    # (batch_ix, position in sentence, 301)
+    wordvecs = torch.stack(wordvecs).permute(1,0,2)
+
+    hidden = self.vgg.forward_until_hidden_layer(imgs)
+    cell = Variable(torch.zeros(batch_size, RNN_HIDDEN_SIZE)).cuda()
 
     # Train it to predict the next word given previous word vector
-    # Start with zero vector as first input
-    wordvecs_shift_one = [np.zeros(WORDVEC_SIZE)] + wordvecs[:-1]
+    # Remove the last word vector and prepend zero vector as first input
+    wordvecs_shift_one = torch.cat([
+        torch.zeros(batch_size, 1, WORDVEC_SIZE).double(),
+        wordvecs[:, :-1, :]
+      ],
+      dim = 1,
+    )
 
     sum_nll = 0
-    for word, wordvec in zip(words, wordvecs_shift_one):
-      next_input = Variable(torch.Tensor(wordvec)).cuda()
+    for ix in range(SENTENCE_LENGTH):
+      next_input = Variable(wordvecs[:, ix, :]).cuda().float()
       hidden, cell = self.lstm_cell(next_input, (hidden, cell))
 
-      word_class = self.hidden_to_vocab(hidden).unsqueeze(0)
-      word_ix = Variable(torch.LongTensor([self.word_embeddings.get_index_from_word(word)])).cuda()
+      word_class = self.hidden_to_vocab(hidden)
 
-      nll = F.cross_entropy(word_class, word_ix)
+      word_ix_list = []
+      for w in sentences[ix]:
+        word_ix_list.append(self.word_embeddings.get_index_from_word(w))
+      word_ix = Variable(torch.LongTensor(word_ix_list)).cuda()
+
+      nll = F.cross_entropy(word_class, word_ix, size_average = False)
       sum_nll += nll
 
     return sum_nll

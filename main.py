@@ -4,34 +4,26 @@ from torch.autograd import Variable
 import torch.optim
 import pdb
 from PIL import Image
+import coco_data_loader
 import json
 import caption_net
 import numpy as np
 import os
 import random
+import sys
 
 RNG_SEED = 236347
 
 EPOCHS = 10
-BATCH_SIZE = 20
+BATCH_SIZE = 100
 SAVE_MODEL_EVERY = 200
 
 IMAGE_DIR = '../train2014'
-CAPTION_JSON = '../annotations/captions_train2014.json'
 
-
-
-def resize_and_pad(img):
-  img.thumbnail((224, 224))
-  w, h = img.size
-  new_img = Image.new('RGB', (224, 224), 'black')
-  new_img.paste(img, ((224 - w)//2, (224 - h)//2))
-  return new_img
 
 
 # Image of a bed
-#TEST_IMAGE = '../train2014/COCO_train2014_000000436508.jpg'
-TEST_IMAGE = '../bai_with_cat.jpg'
+TEST_IMAGE = '../train2014/COCO_train2014_000000436508.jpg'
 
 
 def test_vgg_on_image():
@@ -58,16 +50,12 @@ def test_vgg_on_image():
 
 
 def training_loop():
-
-  # Load JSON
-  with open(CAPTION_JSON) as jsonf:
-    data = json.load(jsonf)
-    captions = data['annotations']
-
-  # Shuffle captions
-  random.shuffle(captions)
-  captions_batches = [captions[i:i+BATCH_SIZE] for i in range(0, len(captions), BATCH_SIZE)]
-  num_batches = len(captions_batches)
+  dataloader = torch.utils.data.DataLoader(
+    coco_data_loader.CocoData(),
+    batch_size = BATCH_SIZE,
+    num_workers = 16,
+    shuffle = True,
+  )
 
   # Initialize model
   model = caption_net.CaptionNet().cuda()
@@ -75,32 +63,15 @@ def training_loop():
   optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
 
   for epoch in range(EPOCHS):
-    for batch_ix, captions_batch in enumerate(captions_batches):
-      batch_loss = 0
-      optimizer.zero_grad()
-
-      for caption in captions_batch:
-        image_id = caption['image_id']
-        image_file = '%s/COCO_train2014_%012d.jpg' % (IMAGE_DIR, image_id)
-        text = caption['caption']
-
-        # Load image
-        img = Image.open(image_file)
-        transforms = torchvision.transforms.Compose([
-          torchvision.transforms.Lambda(resize_and_pad),
-          torchvision.transforms.ToTensor(),
-        ])
-        img = transforms(img).unsqueeze(0)
-        img = Variable(img).cuda()
-
-        # Compute loss
-        loss = model.forward_perplexity(img, text)
-        batch_loss += loss
+    batch_loss = 0
+    for batch_ix, (images, sentences, wordvecs) in enumerate(dataloader):
+      images = Variable(images).cuda()
+      batch_loss = model.forward_perplexity(images, sentences, wordvecs)
 
       # Update parameters
       batch_loss.backward()
       optimizer.step()
-      print('Epoch %d, batch %d/%d, loss %0.9f' % (epoch, batch_ix, num_batches, batch_loss))
+      print('Epoch %d, batch %d/%d, loss %0.9f' % (epoch, batch_ix, len(dataloader), batch_loss))
       batch_loss = 0
 
       if (batch_ix+1) % SAVE_MODEL_EVERY == 0:
@@ -119,7 +90,12 @@ def inference_mode():
   model.load_state_dict(torch.load('caption_net.t7'))
   model.eval()
 
-  img = Image.open(TEST_IMAGE)
+  if len(sys.argv) >= 2:
+    img_path = sys.argv[1]
+  else:
+    img_path = TEST_IMAGE
+
+  img = Image.open(img_path)
   transforms = torchvision.transforms.Compose([
     torchvision.transforms.Lambda(resize_and_pad),
     torchvision.transforms.ToTensor(),
@@ -138,8 +114,8 @@ def main():
   random.seed(RNG_SEED)
 
   #test_vgg_on_image()
-  #training_loop()
-  inference_mode()
+  training_loop()
+  #inference_mode()
 
 
 main()

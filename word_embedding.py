@@ -2,6 +2,7 @@ import torch
 import spacy
 import string
 import numpy as np
+import pdb
 
 
 class WordEmbedding:
@@ -21,6 +22,8 @@ class WordEmbedding:
     self.vocab_words.append('.')
 
   def get_word_embedding(self, word):
+    if word == '.':
+      return self.END_MARKER
     v = self.nlp.vocab.get_vector(word)
     v = np.append(v, [0])
     return v
@@ -32,21 +35,26 @@ class WordEmbedding:
     return self.vocab_words.index(word)
 
 
-  def sentence_to_embedding(self, text):
+  def sentence_to_embedding(self, text, pad):
     """Process natural language sentence into sequence of word vectors"""
 
     # Convert to lowercase and remove punctuation
     text = text.lower()
     text = ''.join([c for c in text if c not in string.punctuation])
-
-    words = []
+    
     embeddings = []
-    for tok in text.split():
-      if tok in self.vocab_words:
-        words.append(tok)
-        embeddings.append(self.get_word_embedding(tok))
-    words.append('.')
-    embeddings.append(self.END_MARKER)
+    words = []
+    for word in text.split():
+      if word in self.vocab_words:
+        words.append(word)
+        embeddings.append(self.get_word_embedding(word))
+
+    # Pad with periods if it's too short
+    words = words[:pad]
+    embeddings = embeddings[:pad]
+    while len(words) < pad:
+      words.append('.')
+      embeddings.append(self.END_MARKER)
 
     return words, embeddings
 
