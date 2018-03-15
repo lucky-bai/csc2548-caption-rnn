@@ -8,9 +8,11 @@ from PIL import Image
 import json
 
 
-IMAGE_DIR = '../train2014'
+TRAIN_DIR = '../train2014'
 VALID_DIR = '../val2014'
-CAPTION_JSON = '../annotations/captions_train2014.json'
+
+TRAIN_JSON = '../annotations/captions_train2014.json'
+VALID_JSON = '../annotations/captions_val2014.json'
 
 
 def resize_and_pad(img):
@@ -24,9 +26,16 @@ def resize_and_pad(img):
 class CocoData(torch.utils.data.Dataset):
   """Utility for loading COCO data in batches"""
 
-  def __init__(self):
+  def __init__(self, mode):
     self.word_embeddings = word_embedding.WordEmbedding()
-    with open(CAPTION_JSON) as jsonf:
+    self.mode = mode
+
+    if mode == 'train':
+      self.json_file = TRAIN_JSON
+    else:
+      self.json_file = VALID_JSON
+
+    with open(self.json_file) as jsonf:
       data = json.load(jsonf)
       self.captions = data['annotations']
 
@@ -38,7 +47,10 @@ class CocoData(torch.utils.data.Dataset):
   def __getitem__(self, idx):
     caption = self.captions[idx]
     image_id = caption['image_id']
-    image_file = '%s/COCO_train2014_%012d.jpg' % (IMAGE_DIR, image_id)
+    if self.mode == 'train':
+      image_file = '%s/COCO_train2014_%012d.jpg' % (TRAIN_DIR, image_id)
+    else:
+      image_file = '%s/COCO_val2014_%012d.jpg' % (VALID_DIR, image_id)
     text = caption['caption']
 
     # Process text
