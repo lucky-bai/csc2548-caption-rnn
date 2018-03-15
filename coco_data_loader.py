@@ -9,6 +9,7 @@ import json
 
 
 IMAGE_DIR = '../train2014'
+VALID_DIR = '../val2014'
 CAPTION_JSON = '../annotations/captions_train2014.json'
 
 
@@ -52,3 +53,25 @@ class CocoData(torch.utils.data.Dataset):
     img = transforms(img)
 
     return img, words, wordvecs
+
+
+class CocoDataValid(torch.utils.data.Dataset):
+  def __init__(self):
+    self.images = os.listdir(VALID_DIR)
+
+  def __len__(self):
+    return len(self.images)
+
+  def __getitem__(self, idx):
+    """Return (ID, image tensor)"""
+    image_file = VALID_DIR + '/' + self.images[idx]
+
+    img = Image.open(image_file)
+    transforms = torchvision.transforms.Compose([
+      torchvision.transforms.Lambda(resize_and_pad),
+      torchvision.transforms.ToTensor(),
+    ])
+    img = transforms(img)
+
+    img_id = int(image_file.split('.')[-2][-12:])
+    return img_id, img

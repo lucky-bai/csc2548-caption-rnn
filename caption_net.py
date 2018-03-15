@@ -103,36 +103,35 @@ class CaptionNet(nn.Module):
     self.word_embeddings = word_embedding.WordEmbedding()
 
 
-  def forward(self, img):
+  def forward(self, imgs):
     """Forward pass through network
     Input: image tensor
     Output: sequence of words
     """
-    hidden = self.vgg.forward_until_hidden_layer(img).squeeze()
-    cell = Variable(torch.zeros(RNN_HIDDEN_SIZE)).cuda()
+    batch_size = imgs.shape[0]
+    hidden = self.vgg.forward_until_hidden_layer(imgs)
+    cell = Variable(torch.zeros(batch_size, RNN_HIDDEN_SIZE)).cuda()
 
     # First word vector is zero
-    next_input = Variable(torch.zeros(WORDVEC_SIZE)).cuda()
+    next_input = Variable(torch.zeros(batch_size, WORDVEC_SIZE)).cuda()
     
-    # Keep generating until end token
-    words = []
-    while True:
+    captions = [[] for _ in range(batch_size)]
+    for ix in range(SENTENCE_LENGTH):
       hidden, cell = self.lstm_cell(next_input, (hidden, cell))
       word_class = self.hidden_to_vocab(hidden)
-      _, word_ix = torch.max(word_class, 0)
-      word_ix = int(word_ix)
+      _, word_ix = torch.max(word_class, 1)
 
-      cur_word = self.word_embeddings.get_word_from_index(word_ix)
-      words.append(cur_word)
+      for batch_ix in range(batch_size):
 
-      # End marker generated, we're done
-      if cur_word == '.':
-        break
+        # Append only if we're not already done (hit a period)
+        if len(captions[batch_ix]) == 0 or captions[batch_ix][-1] != '.':
+          cur_word = self.word_embeddings.get_word_from_index(int(word_ix[batch_ix]))
+          captions[batch_ix].append(cur_word)
 
-      # Update input to next layer
-      next_input = Variable(torch.Tensor(self.word_embeddings.get_word_embedding(cur_word))).cuda()
+        # Update input to next layer
+        next_input[batch_ix, :] = torch.Tensor(self.word_embeddings.get_word_embedding(cur_word))
 
-    return words
+    return captions
 
 
   def forward_perplexity(self, imgs, sentences, wordvecs):

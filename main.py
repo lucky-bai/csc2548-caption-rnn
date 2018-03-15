@@ -9,6 +9,8 @@ import caption_net
 import numpy as np
 import random
 import sys
+import argparse
+import json
 
 RNG_SEED = 236347
 
@@ -56,19 +58,43 @@ def training_loop():
     torch.save(model.state_dict(), 'caption_net.t7')
 
 
+def validation_loop():
+  dataloader = torch.utils.data.DataLoader(
+    coco_data_loader.CocoDataValid(),
+    batch_size = BATCH_SIZE,
+    num_workers = 16,
+    shuffle = True,
+  )
 
-def inference_mode():
+  model = caption_net.CaptionNet().cuda()
+  model.load_state_dict(torch.load('caption_net.t7'))
+  model.eval()
+
+  valid_out = []
+  for batch_ix, (image_ids, images) in enumerate(dataloader):
+    print('Validation %d/%d' % (batch_ix, len(dataloader)))
+
+    images = Variable(images).cuda()
+    captions = model(images)
+
+    for image_id, caption in zip(image_ids, captions):
+      caption = ' '.join(caption)
+      valid_out.append({
+        'image_id': image_id,
+        'caption': caption,
+      })
+
+  with open('valid.json', 'w') as json_out_file:
+    json.dump(valid_out, json_out_file, indent = 2)
+
+
+def inference_mode(imgfile):
   """Generate a caption for a new image"""
   model = caption_net.CaptionNet().cuda()
   model.load_state_dict(torch.load('caption_net.t7'))
   model.eval()
 
-  if len(sys.argv) >= 2:
-    img_path = sys.argv[1]
-  else:
-    img_path = TEST_IMAGE
-
-  img = Image.open(img_path)
+  img = Image.open(imgfile)
   transforms = torchvision.transforms.Compose([
     torchvision.transforms.Lambda(coco_data_loader.resize_and_pad),
     torchvision.transforms.ToTensor(),
@@ -80,14 +106,22 @@ def inference_mode():
   print(out)
 
 
-
 def main():
   np.random.seed(RNG_SEED)
   torch.manual_seed(RNG_SEED)
   random.seed(RNG_SEED)
 
-  training_loop()
-  #inference_mode()
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--mode')
+  parser.add_argument('--file')
+  args = parser.parse_args()
+
+  if args.mode == 'train':
+    training_loop()
+  elif args.mode == 'valid':
+    validation_loop()
+  else:
+    inference_mode(args.file)
 
 
 main()
