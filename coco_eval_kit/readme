@@ -1,3 +1,7 @@
 This is the official coco eval kit.
 
 It is in python2.7
+
+Need to copy meteor data (too big for git)
+
+To run: `python2 coco_eval_kit/eval.py`
