@@ -13,8 +13,8 @@ VGG_MODEL_CFG = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 
 # Input dimensions of VGG16 input image
 VGG_IMG_DIM = 224
 
-# Recurrent size must be same as last hidden layer off VGG16
-RNN_HIDDEN_SIZE = 4096
+# Recurrent size
+RNN_HIDDEN_SIZE = 512
 
 # Dimension of word embeddings
 # Add one to handle END_MARKER
@@ -34,13 +34,13 @@ class VGG(nn.Module):
     super(VGG, self).__init__()
     self.features = features
     self.classifier = nn.Sequential(
-      nn.Linear(512 * 7 * 7, RNN_HIDDEN_SIZE),
+      nn.Linear(512 * 7 * 7, 4096),
       nn.ReLU(True),
       nn.Dropout(),
-      nn.Linear(RNN_HIDDEN_SIZE, RNN_HIDDEN_SIZE),
+      nn.Linear(4096, 4096),
       nn.ReLU(True),
       nn.Dropout(),
-      nn.Linear(RNN_HIDDEN_SIZE, num_classes),
+      nn.Linear(4096, num_classes),
     )
 
   def forward(self, x):
@@ -50,15 +50,17 @@ class VGG(nn.Module):
     return x
 
   def forward_until_hidden_layer(self, x):
-    """Stop at the hidden layer before the final classification layer"""
+    """Return the results of the last two FC layers"""
     x = self.features(x)
     x = x.view(x.size(0), -1)
-    # Do 4 of the layers in classifier
     x = self.classifier._modules['0'](x)
     x = self.classifier._modules['1'](x)
     x = self.classifier._modules['2'](x)
+    hidden1 = x
     x = self.classifier._modules['3'](x)
-    return x
+    x = self.classifier._modules['4'](x)
+    hidden2 = self.classifier._modules['5'](x)
+    return torch.cat((hidden1, hidden2), dim = 1)
 
 
 def make_layers(cfg, batch_norm=False):
@@ -91,6 +93,12 @@ class CaptionNet(nn.Module):
     for param in self.vgg.parameters():
       param.requires_grad = False
 
+    self.vgg_to_hidden = nn.Sequential(
+      nn.Linear(2*4096, RNN_HIDDEN_SIZE),
+      nn.ReLU(True),
+      nn.Dropout(),
+    )
+
     # Recurrent layer
     self.lstm_cell = nn.LSTMCell(
       input_size = WORDVEC_SIZE,
@@ -110,6 +118,7 @@ class CaptionNet(nn.Module):
     """
     batch_size = imgs.shape[0]
     hidden = self.vgg.forward_until_hidden_layer(imgs)
+    hidden = self.vgg_to_hidden(hidden)
     cell = Variable(torch.zeros(batch_size, RNN_HIDDEN_SIZE)).cuda()
 
     # First word vector is zero
@@ -142,6 +151,7 @@ class CaptionNet(nn.Module):
     wordvecs = torch.stack(wordvecs).permute(1,0,2)
 
     hidden = self.vgg.forward_until_hidden_layer(imgs)
+    hidden = self.vgg_to_hidden(hidden)
     cell = Variable(torch.zeros(batch_size, RNN_HIDDEN_SIZE)).cuda()
 
     # Train it to predict the next word given previous word vector

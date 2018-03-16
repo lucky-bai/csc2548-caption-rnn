@@ -50,7 +50,7 @@ def training_loop():
 
     # Calculate validation loss at end of epoch
     validation_loss = get_validation_loss(model)
-    print('Validation Loss:', validation_loss)
+    print('Epoch %d, validation Loss %0.9f' % (epoch, validation_loss))
 
     # Save if validation loss improved, otherwise stop early
     if validation_loss < best_validation_loss:
