@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from forgetful_lstm_cell import ForgetfulGRUCell
 import word_embedding
 import pdb
 import numpy as np
@@ -14,7 +15,7 @@ VGG_MODEL_CFG = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 
 VGG_IMG_DIM = 224
 
 # Recurrent size
-RNN_HIDDEN_SIZE = 512
+RNN_HIDDEN_SIZE = 1536
 
 # Dimension of word embeddings
 # Add one to handle END_MARKER
@@ -100,7 +101,7 @@ class CaptionNet(nn.Module):
     )
 
     # Recurrent layer
-    self.lstm_cell = nn.LSTMCell(
+    self.gru_cell = ForgetfulGRUCell(
       input_size = WORDVEC_SIZE,
       hidden_size = RNN_HIDDEN_SIZE,
     )
@@ -126,7 +127,7 @@ class CaptionNet(nn.Module):
     
     captions = [[] for _ in range(batch_size)]
     for ix in range(SENTENCE_LENGTH):
-      hidden, cell = self.lstm_cell(next_input, (hidden, cell))
+      hidden = self.gru_cell(next_input, hidden)
       word_class = self.hidden_to_vocab(hidden)
       _, word_ix = torch.max(word_class, 1)
 
@@ -166,7 +167,7 @@ class CaptionNet(nn.Module):
     sum_nll = 0
     for ix in range(SENTENCE_LENGTH):
       next_input = Variable(wordvecs_shift_one[:, ix, :]).cuda().float()
-      hidden, cell = self.lstm_cell(next_input, (hidden, cell))
+      hidden = self.gru_cell(next_input, hidden)
 
       word_class = self.hidden_to_vocab(hidden)
 
