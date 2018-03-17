@@ -23,7 +23,6 @@ class COCOEvalCap:
         for imgId in imgIds:
             gts[imgId] = self.coco.imgToAnns[imgId]
             res[imgId] = self.cocoRes.imgToAnns[imgId]
-        print(gts)
         # =================================================
         # Set up scorers
         # =================================================
@@ -31,7 +30,6 @@ class COCOEvalCap:
         tokenizer = PTBTokenizer()
         gts  = tokenizer.tokenize(gts)
         res = tokenizer.tokenize(res)
-        print(gts)
         # =================================================
         # Set up scorers
         # =================================================

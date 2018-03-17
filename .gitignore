@@ -1,4 +1,6 @@
 *.pth
 *.pyc
 *.t7
+*.gz
+*.json
 coco_words.txt
