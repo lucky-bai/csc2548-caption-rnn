@@ -68,6 +68,7 @@ class CocoData(torch.utils.data.Dataset):
 
 
 class CocoDataValid(torch.utils.data.Dataset):
+  """Dataloader for evaluation mode (generate caption from image)"""
   def __init__(self):
     self.images = os.listdir(VALID_DIR)
 
