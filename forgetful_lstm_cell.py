@@ -5,6 +5,9 @@ import torch.nn.functional as F
 import math
 import pdb
 
+TRAIN_DROPOUT_RATE = 0.2
+EVAL_DROPOUT_RATE = 0
+
 
 class ForgetfulGRUCell(nn.Module):
   """Similar to GRU cell, but allows dropout during inference
@@ -54,5 +57,11 @@ class ForgetfulGRUCell(nn.Module):
     z = F.sigmoid(x.mm(self.U_z) + h.mm(self.W_z) + self.b_z)
     hbar = F.tanh(x.mm(self.U_hbar) + (r * h).mm(self.W_hbar) + self.b_hbar)
     hnext = z * h + (1-z) * hbar
-    # Todo: add dropout here
+    
+    # Use different dropout depending on train or eval
+    if self.training:
+      hnext = F.dropout(hnext, p = TRAIN_DROPOUT_RATE, training = True)
+    else:
+      hnext = F.dropout(hnext, p = EVAL_DROPOUT_RATE, training = True)
+
     return hnext
