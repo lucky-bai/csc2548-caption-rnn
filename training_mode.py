@@ -3,11 +3,12 @@ from torch.autograd import Variable
 import torch.optim
 import pdb
 import coco_data_loader
-import caption_net
+import caption_net_attend_v2
+import numpy as np
 
-EPOCHS = 50
-BATCH_SIZE = 150
-SAVE_MODEL_EVERY = 999999
+EPOCHS = 7
+BATCH_SIZE = 100
+SAVE_MODEL_EVERY = 500
 
 
 def get_validation_loss(model):
@@ -15,7 +16,7 @@ def get_validation_loss(model):
   valid_dataloader = torch.utils.data.DataLoader(
     coco_data_loader.CocoData(mode = 'valid'),
     batch_size = BATCH_SIZE,
-    num_workers = 16,
+    num_workers = 4,
     shuffle = True,
   )
 
@@ -38,17 +39,33 @@ def training_loop():
   train_dataloader = torch.utils.data.DataLoader(
     coco_data_loader.CocoData(mode = 'train'),
     batch_size = BATCH_SIZE,
-    num_workers = 16,
+    num_workers = 4,
     shuffle = True,
   )
 
   # Initialize model
-  model = caption_net.CaptionNet().cuda()
+  model = caption_net_attend_v2.CaptionNet().cuda()
   model.train()
-  optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
+  optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), weight_decay=1e-5)
   best_validation_loss = 1e8
 
+  print("verify model")
+  print(model)
+
+  grad_list=[]
+  for name, param in model.named_parameters():
+      grad_list.append((name, param.requires_grad))
+  
+  print("verify vgg grad", grad_list)
+  
+  epoch_seed = np.random.randint(100000, size=EPOCHS)
+  print("epoch seed:", epoch_seed)
   for epoch in range(EPOCHS):
+    EPOCH_RNG = epoch_seed[epoch].item()
+    np.random.seed(EPOCH_RNG)
+    torch.manual_seed(EPOCH_RNG)
+    torch.cuda.manual_seed(EPOCH_RNG)
+    print("epoch, seed", epoch, EPOCH_RNG)
     for batch_ix, (images, sentences, wordvecs) in enumerate(train_dataloader):
       optimizer.zero_grad()
       images = Variable(images).cuda()
@@ -68,9 +85,13 @@ def training_loop():
     print('Epoch %d, validation Loss %0.9f' % (epoch, validation_loss))
 
     # Save if validation loss improved, otherwise stop early
-    if validation_loss < best_validation_loss:
-      best_validation_loss = validation_loss
-      print('Saving...')
-      torch.save(model.state_dict(), 'caption_net.t7')
-    else:
-      break
+    #if validation_loss < best_validation_loss:
+    #  best_validation_loss = validation_loss
+    #  print('Saving...')
+    #  torch.save(model.state_dict(), 'caption_net.t7')
+    #else:
+    #  break
+    
+    print('End epoch, Saving...')
+    torch.save(model.state_dict(), 'caption_net.t7')
+

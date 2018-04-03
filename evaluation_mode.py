@@ -4,10 +4,10 @@ from torch.autograd import Variable
 import pdb
 from PIL import Image
 import coco_data_loader
-import caption_net
+import caption_net_attend_v2
 import json
 
-BATCH_SIZE = 150
+BATCH_SIZE = 100
 
 
 def evaluation_loop():
@@ -15,11 +15,11 @@ def evaluation_loop():
   dataloader = torch.utils.data.DataLoader(
     coco_data_loader.CocoDataValid(),
     batch_size = BATCH_SIZE,
-    num_workers = 16,
+    num_workers = 4,
     shuffle = True,
   )
 
-  model = caption_net.CaptionNet().cuda()
+  model = caption_net_attend_v2.CaptionNet().cuda()
   model.load_state_dict(torch.load('caption_net.t7'))
   model.eval()
 
@@ -43,7 +43,7 @@ def evaluation_loop():
 
 def caption_single_image(imgfile):
   """Generate a caption for a new image"""
-  model = caption_net.CaptionNet().cuda()
+  model = caption_net_attend_v2.CaptionNet().cuda()
   model.load_state_dict(torch.load('caption_net.t7'))
   model.eval()
 
