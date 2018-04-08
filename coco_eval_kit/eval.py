@@ -3,6 +3,7 @@ from pycocoevalcap.eval import COCOEvalCap
 import matplotlib.pyplot as plt
 
 import json
+import sys
 from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.3f')
 
@@ -14,7 +15,8 @@ algName = 'fakecap'
 annFile='%s/annotations/captions_%s.json'%(dataDir,dataType)
 subtypes=['results', 'evalImgs', 'eval']
 [resFile, evalImgsFile, evalFile]= ['%s/results/captions_%s_%s_%s.json'%(dataDir,dataType,algName,subtype) for subtype in subtypes]
-resFile = 'valid.json'
+#resFile = 'valid.json'
+resFile = sys.argv[1]
 
 # create coco object and cocoRes object
 coco = COCO(annFile)

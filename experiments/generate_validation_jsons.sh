@@ -1,0 +1,10 @@
+python main.py --mode=eval --model-weights=checkpoints/dropout00.t7 --eval-dropout=0.0 --output-json=checkpoints/valid_00_00.json
+python main.py --mode=eval --model-weights=checkpoints/dropout00.t7 --eval-dropout=0.2 --output-json=checkpoints/valid_00_20.json
+python main.py --mode=eval --model-weights=checkpoints/dropout00.t7 --eval-dropout=0.4 --output-json=checkpoints/valid_00_40.json
+python main.py --mode=eval --model-weights=checkpoints/dropout00.t7 --eval-dropout=0.6 --output-json=checkpoints/valid_00_60.json
+python main.py --mode=eval --model-weights=checkpoints/dropout00.t7 --eval-dropout=0.8 --output-json=checkpoints/valid_00_80.json
+python main.py --mode=eval --model-weights=checkpoints/dropout20.t7 --eval-dropout=0.0 --output-json=checkpoints/valid_20_00.json
+python main.py --mode=eval --model-weights=checkpoints/dropout20.t7 --eval-dropout=0.2 --output-json=checkpoints/valid_20_20.json
+python main.py --mode=eval --model-weights=checkpoints/dropout20.t7 --eval-dropout=0.4 --output-json=checkpoints/valid_20_40.json
+python main.py --mode=eval --model-weights=checkpoints/dropout20.t7 --eval-dropout=0.6 --output-json=checkpoints/valid_20_60.json
+python main.py --mode=eval --model-weights=checkpoints/dropout20.t7 --eval-dropout=0.8 --output-json=checkpoints/valid_20_80.json

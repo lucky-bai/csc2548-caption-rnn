@@ -6,7 +6,7 @@ import argparse
 import training_mode
 import evaluation_mode
 
-RNG_SEED = 236347
+RNG_SEED = 236348
 
 
 def main():
@@ -16,15 +16,19 @@ def main():
 
   parser = argparse.ArgumentParser()
   parser.add_argument('--mode')
-  parser.add_argument('--file')
+  parser.add_argument('--image')
+  parser.add_argument('--eval-dropout', type=float)
+  parser.add_argument('--output-json')
+  parser.add_argument('--model-weights')
   args = parser.parse_args()
+  print(args)
 
   if args.mode == 'train':
     training_mode.training_loop()
   elif args.mode == 'eval':
-    evaluation_mode.evaluation_loop()
+    evaluation_mode.evaluation_loop(args)
   else:
-    evaluation_mode.caption_single_image(args.file)
+    evaluation_mode.caption_single_image(args.image)
 
 
 main()

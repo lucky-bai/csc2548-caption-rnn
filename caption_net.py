@@ -57,11 +57,10 @@ class VGG(nn.Module):
     x = self.classifier._modules['0'](x)
     x = self.classifier._modules['1'](x)
     x = self.classifier._modules['2'](x)
-    hidden1 = x
     x = self.classifier._modules['3'](x)
     x = self.classifier._modules['4'](x)
-    hidden2 = self.classifier._modules['5'](x)
-    return torch.cat((hidden1, hidden2), dim = 1)
+    hidden = self.classifier._modules['5'](x)
+    return hidden
 
 
 def make_layers(cfg, batch_norm=False):
@@ -83,7 +82,7 @@ def make_layers(cfg, batch_norm=False):
 
 class CaptionNet(nn.Module):
 
-  def __init__(self):
+  def __init__(self, args = None):
     super(CaptionNet, self).__init__()
 
     # Make VGG net
@@ -95,7 +94,7 @@ class CaptionNet(nn.Module):
       param.requires_grad = False
 
     self.vgg_to_hidden = nn.Sequential(
-      nn.Linear(2*4096, RNN_HIDDEN_SIZE),
+      nn.Linear(4096, RNN_HIDDEN_SIZE),
       nn.ReLU(True),
       nn.Dropout(),
     )
@@ -104,6 +103,7 @@ class CaptionNet(nn.Module):
     self.gru_cell = ForgetfulGRUCell(
       input_size = WORDVEC_SIZE,
       hidden_size = RNN_HIDDEN_SIZE,
+      args = args,
     )
 
     # Linear layer to convert hidden layer to word in vocab

@@ -6,7 +6,9 @@ import math
 import pdb
 
 TRAIN_DROPOUT_RATE = 0.2
-EVAL_DROPOUT_RATE = 0
+
+# This is in argparse now
+#EVAL_DROPOUT_RATE = 0
 
 
 class ForgetfulGRUCell(nn.Module):
@@ -32,8 +34,9 @@ class ForgetfulGRUCell(nn.Module):
     tanh: activation function with range [-1, 1]
   """
 
-  def __init__(self, input_size, hidden_size):
+  def __init__(self, input_size, hidden_size, args):
     super(ForgetfulGRUCell, self).__init__()
+    self.args = args
     self.input_size = input_size
     self.hidden_size = hidden_size
     self.U_r = Parameter(torch.Tensor(input_size, hidden_size))
@@ -62,6 +65,6 @@ class ForgetfulGRUCell(nn.Module):
     if self.training:
       hnext = F.dropout(hnext, p = TRAIN_DROPOUT_RATE, training = True)
     else:
-      hnext = F.dropout(hnext, p = EVAL_DROPOUT_RATE, training = True)
+      hnext = F.dropout(hnext, p = self.args.eval_dropout, training = True)
 
     return hnext

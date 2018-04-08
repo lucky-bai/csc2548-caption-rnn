@@ -10,7 +10,7 @@ import json
 BATCH_SIZE = 150
 
 
-def evaluation_loop():
+def evaluation_loop(args):
   """Generate a set of captions for evaluation"""
   dataloader = torch.utils.data.DataLoader(
     coco_data_loader.CocoDataValid(),
@@ -19,8 +19,8 @@ def evaluation_loop():
     shuffle = True,
   )
 
-  model = caption_net.CaptionNet().cuda()
-  model.load_state_dict(torch.load('caption_net.t7'))
+  model = caption_net.CaptionNet(args).cuda()
+  model.load_state_dict(torch.load(args.model_weights))
   model.eval()
 
   valid_out = []
@@ -37,7 +37,7 @@ def evaluation_loop():
         'caption': caption,
       })
 
-  with open('valid.json', 'w') as json_out_file:
+  with open(args.output_json, 'w') as json_out_file:
     json.dump(valid_out, json_out_file, indent = 2)
 
 
