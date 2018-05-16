@@ -49,6 +49,17 @@ def get_word_distribution(json_path, json_format):
   return words
 
 
+def exceed_length_limit(json_path):
+  with open(json_path) as f:
+    data = json.load(f)
+
+  c = 0
+  for caption in data:
+    if len(caption['caption'].split()) == 20:
+      c += 1
+  return c / len(data)
+
+
 def KL(dist_p, dist_q):
   """Compute discrete KL divergence"""
   kl = 0
@@ -75,6 +86,8 @@ def main():
     validation_distribution = get_word_distribution(validation_file, json_format = 'test')
     print('Unique:', len(validation_distribution))
     print('KL:', KL(validation_distribution, ground_truth_distribution))
+    print('Exceed:', exceed_length_limit(validation_file))
+    print()
 
 
 main()
